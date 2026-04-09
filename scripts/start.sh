@@ -11,7 +11,7 @@ if [ "${CONTAINER_RUNTIME:-}" = "podman" ]; then
   COMPOSE="sudo podman-compose"
   CONTAINER="sudo podman"
 else
-  COMPOSE="docker-compose"
+  COMPOSE="docker compose"
   CONTAINER="docker"
 fi
 
