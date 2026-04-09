@@ -37,9 +37,13 @@ echo ""
 echo "[setup] Creating .env — press Enter to use default"
 echo ""
 
-printf "VLLM_URL [http://localhost:8000]: "
+printf "VLLM_URL [https://llm.agentic-ai-gist.org]: "
 read vllm_url
-vllm_url="${vllm_url:-http://localhost:8000}"
+vllm_url="${vllm_url:-https://llm.agentic-ai-gist.org}"
+
+printf "VLLM_MODEL [google/gemma-4-27b-it]: "
+read vllm_model
+vllm_model="${vllm_model:-google/gemma-4-27b-it}"
 
 printf "Discord bot token (skip if not using Discord): "
 read discord_token
@@ -49,28 +53,17 @@ printf "Discord guild ID (skip if not using Discord): "
 read discord_guild
 discord_guild="${discord_guild:-}"
 
-printf "Cloudflare Client ID (for vLLM auth, skip if not using): "
-read cf_client_id
-cf_client_id="${cf_client_id:-}"
-
-printf "Cloudflare Client Secret (skip if not using): "
-read cf_client_secret
-cf_client_secret="${cf_client_secret:-}"
-
 printf "LOG_LEVEL [info]: "
 read log_level
 log_level="${log_level:-info}"
 
 cat > .env << EOF
 DATABASE_URL=postgresql://postgres:postgres@postgres:5432/edu_runtime
-VLLM_URL=${vllm_url}
-CF_CLIENT_ID=${cf_client_id}
-CF_CLIENT_SECRET=${cf_client_secret}
 VAULT_PATH=/app/wiki-vault
+VLLM_URL=${vllm_url}
+VLLM_MODEL=${vllm_model}
 OPENCLAW_DISCORD_TOKEN=${discord_token}
 OPENCLAW_DISCORD_GUILD_ID=${discord_guild}
-OPENCLAW_GATEWAY_URL=http://localhost:3100
-OPENCLAW_GATEWAY_PORT=3100
 LOG_LEVEL=${log_level}
 PORT=3000
 EOF
