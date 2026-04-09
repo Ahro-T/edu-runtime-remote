@@ -97,14 +97,26 @@ server.tool(
 );
 
 server.tool(
-  "evaluate_submission",
-  "Trigger AI evaluation of a recorded submission. Returns pass/fail verdict and per-slot feedback.",
-  { submissionId: z.string() },
-  async ({ submissionId }) => {
+  "record_evaluation",
+  "Record a pre-computed evaluation result for a submission. The agent evaluates the answer and provides the result.",
+  {
+    submissionId: z.string(),
+    result: z.enum(["pass", "fail", "remediation"]),
+    score: z.number().min(0).max(100),
+    rubricSlots: z.array(z.object({
+      slot: z.string(),
+      score: z.number(),
+      feedback: z.string(),
+    })).default([]),
+    feedback: z.string(),
+    missingPoints: z.array(z.string()).default([]),
+    evaluatorModel: z.string().default("google/gemma-4-27b-it"),
+  },
+  async ({ submissionId, ...evalData }) => {
     try {
-      return ok(await callApi("POST", `/api/submissions/${submissionId}/evaluate`));
+      return ok(await callApi("POST", `/api/submissions/${submissionId}/record-evaluation`, evalData));
     } catch (e) {
-      return err(`evaluate_submission failed: ${e}`);
+      return err(`record_evaluation failed: ${e}`);
     }
   },
 );

@@ -2,11 +2,7 @@ import { z } from 'zod';
 
 const configSchema = z.object({
   DATABASE_URL: z.string().min(1, 'DATABASE_URL is required'),
-  VLLM_URL: z.string().min(1, 'VLLM_URL is required'),
   VAULT_PATH: z.string().min(1, 'VAULT_PATH is required'),
-  VLLM_MODEL: z.string().optional().default('default'),
-  CF_CLIENT_ID: z.string().optional(),
-  CF_CLIENT_SECRET: z.string().optional(),
   DISCORD_TOKEN: z.string().optional(),
   DISCORD_GUILD_ID: z.string().optional(),
   OPENCLAW_GATEWAY_URL: z.string().optional().default('http://localhost:3100'),

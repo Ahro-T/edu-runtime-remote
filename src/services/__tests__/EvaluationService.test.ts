@@ -3,8 +3,6 @@ import { EvaluationService } from '../EvaluationService.js';
 import type { LearnerStateStore } from '../../ports/LearnerStateStore.js';
 import type { LearnerEventStore } from '../../ports/LearnerEventStore.js';
 import type { SubmissionStore } from '../../ports/SubmissionStore.js';
-import type { ContentRepository } from '../../ports/ContentRepository.js';
-import type { EvaluationEngine } from '../../ports/EvaluationEngine.js';
 import type { Submission } from '../../domain/learner/Submission.js';
 import type { NodeState } from '../../domain/learner/NodeState.js';
 import type { SubmissionEvaluation } from '../../domain/learner/SubmissionEvaluation.js';
@@ -36,12 +34,11 @@ const mockNodeState: NodeState = {
   updatedAt: new Date(),
 };
 
-const mockEvaluation: SubmissionEvaluation = {
-  submissionId: 'sub-1',
+const mockEvalPayload: Omit<SubmissionEvaluation, 'submissionId'> = {
   evaluatorModel: 'test-model',
   result: 'pass',
-  score: 0.9,
-  rubricSlots: [],
+  score: 90,
+  rubricSlots: [{ slot: 'definition', score: 100, feedback: 'Good' }],
   feedback: 'Good',
   missingPoints: [],
 };
@@ -78,30 +75,7 @@ function makeStores() {
     getEvaluationForSubmission: vi.fn(async () => null),
   };
 
-  const contentRepo: ContentRepository = {
-    getNodeById: vi.fn(async () => ({
-      id: 'node-1', pillar: 'agents', nodeType: 'concept', title: 'Test Node',
-      summary: 'Summary', prerequisites: [], related: [], assessmentTemplateId: 'tpl-1',
-      body: 'Body', masteryStageTarget: 'descriptive', teacherPromptMode: 'guided',
-    })),
-    getTemplateById: vi.fn(async () => null),
-    getTemplateByNodeId: vi.fn(async () => ({
-      id: 'tpl-1', nodeId: 'node-1', instructions: 'Instructions',
-      requiredSlots: ['definition'], rubric: { pass: [], fail: [], remediation: [] },
-    })),
-    listNodesByPillar: vi.fn(async () => []),
-    getPrerequisites: vi.fn(async () => []),
-    getRelatedNodes: vi.fn(async () => []),
-    validateContent: vi.fn(async () => []),
-    exportSnapshot: vi.fn(async () => ({ nodes: [], templates: [], relations: [], exportedAt: new Date() })),
-  };
-
-  const evaluationEngine: EvaluationEngine = {
-    evaluate: vi.fn(async () => mockEvaluation),
-    isAvailable: vi.fn(async () => true),
-  };
-
-  return { stateStore, eventStore, submissionStore, contentRepo, evaluationEngine };
+  return { stateStore, eventStore, submissionStore };
 }
 
 describe('EvaluationService', () => {
@@ -114,46 +88,43 @@ describe('EvaluationService', () => {
       learnerStateStore: stores.stateStore,
       learnerEventStore: stores.eventStore,
       submissionStore: stores.submissionStore,
-      contentRepository: stores.contentRepo,
-      evaluationEngine: stores.evaluationEngine,
       logger,
     });
   });
 
-  it('evaluates a submission and returns result', async () => {
-    const result = await service.evaluateSubmission('sub-1');
+  it('records a pre-computed evaluation and returns result', async () => {
+    const result = await service.recordEvaluation('sub-1', mockEvalPayload);
     expect(result.result).toBe('pass');
-    expect(result.score).toBe(0.9);
+    expect(result.score).toBe(90);
+    expect(result.submissionId).toBe('sub-1');
   });
 
   it('transitions node state to passed on pass result', async () => {
-    await service.evaluateSubmission('sub-1');
+    await service.recordEvaluation('sub-1', mockEvalPayload);
     const upsert = vi.mocked(stores.stateStore.upsertNodeState).mock.calls[0][0];
     expect(upsert.status).toBe('passed');
     expect(upsert.passedAt).toBeInstanceOf(Date);
   });
 
   it('transitions node state to remediation on remediation result', async () => {
-    vi.mocked(stores.evaluationEngine.evaluate).mockResolvedValue({ ...mockEvaluation, result: 'remediation', score: 0.3 });
-    await service.evaluateSubmission('sub-1');
+    await service.recordEvaluation('sub-1', { ...mockEvalPayload, result: 'remediation', score: 30 });
     const upsert = vi.mocked(stores.stateStore.upsertNodeState).mock.calls[0][0];
     expect(upsert.status).toBe('remediation');
   });
 
-  it('throws EVALUATION_UNAVAILABLE when engine is down', async () => {
-    vi.mocked(stores.evaluationEngine.isAvailable).mockResolvedValue(false);
-    await expect(service.evaluateSubmission('sub-1')).rejects.toMatchObject({ code: 'EVALUATION_UNAVAILABLE' });
+  it('throws when submission not found', async () => {
+    vi.mocked(stores.submissionStore.getSubmission).mockResolvedValue(null);
+    await expect(service.recordEvaluation('no-such', mockEvalPayload)).rejects.toMatchObject({ code: 'SESSION_NOT_FOUND' });
   });
 
   it('emits submission_passed event on pass', async () => {
-    await service.evaluateSubmission('sub-1');
+    await service.recordEvaluation('sub-1', mockEvalPayload);
     const event = vi.mocked(stores.eventStore.appendEvent).mock.calls[0][0];
     expect(event.type).toBe('submission_passed');
   });
 
   it('emits remediation_assigned event on remediation', async () => {
-    vi.mocked(stores.evaluationEngine.evaluate).mockResolvedValue({ ...mockEvaluation, result: 'remediation', score: 0.3 });
-    await service.evaluateSubmission('sub-1');
+    await service.recordEvaluation('sub-1', { ...mockEvalPayload, result: 'remediation', score: 30 });
     const event = vi.mocked(stores.eventStore.appendEvent).mock.calls[0][0];
     expect(event.type).toBe('remediation_assigned');
   });

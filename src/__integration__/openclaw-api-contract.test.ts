@@ -4,7 +4,7 @@
  * These are contract tests against the real API (with real Postgres via Testcontainers).
  * They do NOT require OpenClaw Gateway to be running.
  */
-import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import pg from 'pg';
@@ -14,7 +14,6 @@ import { DrizzleLearnerStateStore } from '../adapters/db/DrizzleLearnerStateStor
 import { DrizzleSubmissionStore } from '../adapters/db/DrizzleSubmissionStore.js';
 import { DrizzleLearnerEventStore } from '../adapters/db/DrizzleLearnerEventStore.js';
 import { ObsidianContentRepository } from '../adapters/content/obsidian/ObsidianContentRepository.js';
-import type { EvaluationEngine } from '../ports/EvaluationEngine.js';
 import { LearnerService } from '../services/LearnerService.js';
 import { SessionService } from '../services/SessionService.js';
 import { ContentService } from '../services/ContentService.js';
@@ -144,24 +143,11 @@ beforeAll(async () => {
   const submissionStore = new DrizzleSubmissionStore(db as any, logger);
   const eventStore = new DrizzleLearnerEventStore(db as any, logger);
   const contentRepo = new ObsidianContentRepository(VAULT_PATH, logger);
-  const evalEngine: EvaluationEngine = {
-    evaluate: vi.fn(async (sub) => ({
-      submissionId: sub.id,
-      evaluatorModel: 'mock-model',
-      result: 'pass' as const,
-      score: 0.95,
-      rubricSlots: [],
-      feedback: 'Contract test pass',
-      missingPoints: [],
-    })),
-    isAvailable: vi.fn(async () => true),
-  };
-
   const learnerService = new LearnerService({ learnerStateStore: stateStore, learnerEventStore: eventStore, logger });
   const sessionService = new SessionService({ learnerStateStore: stateStore, learnerEventStore: eventStore, contentRepository: contentRepo, logger });
   const contentService = new ContentService({ learnerStateStore: stateStore, contentRepository: contentRepo, logger });
   const submissionService = new SubmissionService({ learnerStateStore: stateStore, learnerEventStore: eventStore, submissionStore, contentRepository: contentRepo, logger });
-  const evaluationService = new EvaluationService({ learnerStateStore: stateStore, learnerEventStore: eventStore, submissionStore, contentRepository: contentRepo, evaluationEngine: evalEngine, logger });
+  const evaluationService = new EvaluationService({ learnerStateStore: stateStore, learnerEventStore: eventStore, submissionStore, logger });
   const advancementService = new AdvancementService({ learnerStateStore: stateStore, learnerEventStore: eventStore, contentRepository: contentRepo, logger });
   const reviewService = new ReviewService({ learnerStateStore: stateStore, learnerEventStore: eventStore, logger });
   const dashboardService = new DashboardService({ learnerStateStore: stateStore, learnerEventStore: eventStore, submissionStore, contentRepository: contentRepo, logger });
@@ -275,19 +261,20 @@ describe('Contract: POST /api/submissions', () => {
 });
 
 /**
- * Contract: POST /api/submissions/:submissionId/evaluate
+ * Contract: POST /api/submissions/:submissionId/record-evaluation
  * Expected by skill: { evaluation: { result, score, feedback, rubricSlots, missingPoints } }
  */
-describe('Contract: POST /api/submissions/:submissionId/evaluate', () => {
+describe('Contract: POST /api/submissions/:submissionId/record-evaluation', () => {
   it('returns { evaluation: { result, score, feedback } } shape', async () => {
     const res = await app.inject({
       method: 'POST',
-      url: `/api/submissions/${submissionId}/evaluate`,
+      url: `/api/submissions/${submissionId}/record-evaluation`,
+      payload: { result: 'pass', score: 90, rubricSlots: [{ slot: 'definition', score: 100, feedback: 'Good' }], feedback: 'Contract test pass', missingPoints: [], evaluatorModel: 'mock-model' },
     });
     expect(res.statusCode).toBe(200);
     const body = res.json();
     expect(body).toHaveProperty('evaluation');
-    expect(['pass', 'fail', 'degraded']).toContain(body.evaluation.result);
+    expect(['pass', 'fail', 'remediation']).toContain(body.evaluation.result);
     expect(typeof body.evaluation.score).toBe('number');
     expect(typeof body.evaluation.feedback).toBe('string');
     expect(Array.isArray(body.evaluation.rubricSlots)).toBe(true);

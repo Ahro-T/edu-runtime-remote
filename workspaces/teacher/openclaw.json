@@ -1,6 +1,6 @@
 {
   "name": "teacher-agent",
-  "model": "anthropic/claude-sonnet-4-6",
+  "model": "google/gemma-4-27b-it",
   "channels": {
     "discord": {
       "enabled": true,
@@ -8,6 +8,7 @@
     }
   },
   "env": {
-    "RUNTIME_API_URL": "${RUNTIME_API_URL:-http://localhost:3000}"
+    "RUNTIME_API_URL": "${RUNTIME_API_URL:-http://localhost:3000}",
+    "VLLM_URL": "${VLLM_URL:-https://llm.agentic-ai-gist.org}"
   }
 }

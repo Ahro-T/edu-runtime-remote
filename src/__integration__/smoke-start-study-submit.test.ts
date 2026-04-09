@@ -3,7 +3,7 @@
  *
  * Uses real Postgres (Testcontainers) + real ObsidianContentRepository + mocked vLLM engine.
  */
-import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import pg from 'pg';
@@ -13,8 +13,6 @@ import { DrizzleLearnerStateStore } from '../adapters/db/DrizzleLearnerStateStor
 import { DrizzleSubmissionStore } from '../adapters/db/DrizzleSubmissionStore.js';
 import { DrizzleLearnerEventStore } from '../adapters/db/DrizzleLearnerEventStore.js';
 import { ObsidianContentRepository } from '../adapters/content/obsidian/ObsidianContentRepository.js';
-import type { EvaluationEngine } from '../ports/EvaluationEngine.js';
-import type { SubmissionEvaluation } from '../domain/learner/SubmissionEvaluation.js';
 import { LearnerService } from '../services/LearnerService.js';
 import { SessionService } from '../services/SessionService.js';
 import { ContentService } from '../services/ContentService.js';
@@ -137,27 +135,12 @@ describe('Smoke: start -> study -> submit -> evaluate', () => {
     const eventStore = new DrizzleLearnerEventStore(db as any, logger);
     const contentRepo = new ObsidianContentRepository(VAULT_PATH, logger);
 
-    // Mock vLLM engine returning "pass"
-    const mockEval: SubmissionEvaluation = {
-      submissionId: '',
-      evaluatorModel: 'mock-model',
-      result: 'pass',
-      score: 0.9,
-      rubricSlots: [{ slot: 'definition', score: 1, feedback: 'Good' }],
-      feedback: 'Well done',
-      missingPoints: [],
-    };
-    const evalEngine: EvaluationEngine = {
-      evaluate: vi.fn(async (sub) => ({ ...mockEval, submissionId: sub.id })),
-      isAvailable: vi.fn(async () => true),
-    };
-
     // --- Wire services ---
     const learnerService = new LearnerService({ learnerStateStore: stateStore, learnerEventStore: eventStore, logger });
     const sessionService = new SessionService({ learnerStateStore: stateStore, learnerEventStore: eventStore, contentRepository: contentRepo, logger });
     const contentService = new ContentService({ learnerStateStore: stateStore, contentRepository: contentRepo, logger });
     const submissionService = new SubmissionService({ learnerStateStore: stateStore, learnerEventStore: eventStore, submissionStore, contentRepository: contentRepo, logger });
-    const evaluationService = new EvaluationService({ learnerStateStore: stateStore, learnerEventStore: eventStore, submissionStore, contentRepository: contentRepo, evaluationEngine: evalEngine, logger });
+    const evaluationService = new EvaluationService({ learnerStateStore: stateStore, learnerEventStore: eventStore, submissionStore, logger });
 
     // 1. Upsert learner
     const learner = await learnerService.upsertLearner('discord-smoke-1');
@@ -191,15 +174,15 @@ describe('Smoke: start -> study -> submit -> evaluate', () => {
     expect(nodeStateAfterSubmit!.attemptCount).toBe(1);
 
     // 6. Evaluate submission
-    const evaluation = await evaluationService.evaluateSubmission(submission.id);
+    const evaluation = await evaluationService.recordEvaluation(submission.id, { evaluatorModel: 'mock-model', result: 'pass', score: 90, rubricSlots: [{ slot: 'definition', score: 100, feedback: 'Good' }], feedback: 'Well done', missingPoints: [] });
     expect(evaluation.result).toBe('pass');
-    expect(evaluation.score).toBe(0.9);
+    expect(evaluation.score).toBe(90);
 
     // 7. Verify NodeState transitioned to passed
     const nodeStateAfterEval = await stateStore.getNodeState(learner.id, node.id);
     expect(nodeStateAfterEval).not.toBeNull();
     expect(nodeStateAfterEval!.status).toBe('passed');
     expect(nodeStateAfterEval!.passedAt).toBeInstanceOf(Date);
-    expect(nodeStateAfterEval!.lastScore).toBe(0.9);
+    expect(nodeStateAfterEval!.lastScore).toBe(90);
   }, 90000);
 });
