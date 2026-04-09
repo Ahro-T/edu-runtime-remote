@@ -4,7 +4,7 @@ import type { SubmissionEvaluation } from '../../domain/learner/SubmissionEvalua
 import type { KnowledgeNode } from '../../domain/content/KnowledgeNode.js';
 import type { AssessmentTemplate } from '../../domain/content/AssessmentTemplate.js';
 import { buildEvaluationPrompt } from './prompt-builder.js';
-import { parseVllmOutput, ParseError } from './output-parser.js';
+import { parseEvalOutput, ParseError } from './output-parser.js';
 import { applyGuardrails } from './guardrails.js';
 import { buildDegradedResult } from './degraded-mode.js';
 
@@ -76,7 +76,7 @@ export class VllmEvaluationEngine implements EvaluationEngine {
     const content = responseJson.choices[0]?.message.content ?? '';
     const evaluatorModel = responseJson.model;
 
-    const raw = parseVllmOutput(content);
+    const raw = parseEvalOutput(content);
     return applyGuardrails(raw, submission.id, evaluatorModel);
   }
 

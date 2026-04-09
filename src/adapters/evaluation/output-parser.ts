@@ -1,4 +1,4 @@
-export interface VllmEvalResponse {
+export interface RawEvalResponse {
   result: 'pass' | 'fail' | 'remediation';
   score: number;
   rubricSlots: Record<string, { present: boolean; quality: string }>;
@@ -18,7 +18,7 @@ const REQUIRED_FIELDS = ['result', 'score', 'rubricSlots', 'feedback', 'missingP
 const VALID_RESULTS = new Set(['pass', 'fail', 'remediation']);
 const REQUIRED_SLOTS = ['definition', 'importance', 'relation', 'example', 'boundary'] as const;
 
-export function parseVllmOutput(content: string): VllmEvalResponse {
+export function parseEvalOutput(content: string): RawEvalResponse {
   // Strip markdown code fences if present
   const cleaned = content.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '').trim();
 
@@ -26,11 +26,11 @@ export function parseVllmOutput(content: string): VllmEvalResponse {
   try {
     parsed = JSON.parse(cleaned);
   } catch {
-    throw new ParseError(`Failed to parse JSON from vLLM response: ${content.slice(0, 200)}`);
+    throw new ParseError(`Failed to parse JSON from LLM response: ${content.slice(0, 200)}`);
   }
 
   if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
-    throw new ParseError('vLLM response is not a JSON object');
+    throw new ParseError('LLM response is not a JSON object');
   }
 
   const obj = parsed as Record<string, unknown>;

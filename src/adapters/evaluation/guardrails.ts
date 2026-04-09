@@ -1,11 +1,11 @@
-import type { VllmEvalResponse } from './output-parser.js';
+import type { RawEvalResponse } from './output-parser.js';
 import type { SubmissionEvaluation, RubricSlotResult } from '../../domain/learner/SubmissionEvaluation.js';
 
 const REQUIRED_SLOTS = ['definition', 'importance', 'relation', 'example', 'boundary'] as const;
 const LOW_CONFIDENCE_THRESHOLD = 0.5;
 
 /**
- * Apply deterministic guardrails to an evaluated vLLM response and produce
+ * Apply deterministic guardrails to a raw LLM evaluation response and produce
  * a persisted SubmissionEvaluation (confidence is STRIPPED here).
  *
  * CRITICAL rules:
@@ -13,7 +13,7 @@ const LOW_CONFIDENCE_THRESHOLD = 0.5;
  * 2. Fall back to remediation on low confidence (<0.5) AND failed relation check.
  */
 export function applyGuardrails(
-  raw: VllmEvalResponse,
+  raw: RawEvalResponse,
   submissionId: string,
   evaluatorModel: string,
 ): SubmissionEvaluation {
