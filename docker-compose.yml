@@ -47,8 +47,8 @@ services:
       VLLM_MODEL: ${VLLM_MODEL:-google/gemma-4-27b-it}
     volumes:
       - ./workspaces/teacher:/workspace
-      - ./scripts/openclaw-entrypoint.sh:/app/openclaw-entrypoint.sh:ro
-    entrypoint: ["/bin/sh", "/app/openclaw-entrypoint.sh"]
+      - ./scripts/openclaw-entrypoint.sh:/entrypoint.sh:ro
+    entrypoint: ["/bin/sh", "/entrypoint.sh"]
     command: []
     depends_on:
       - app
