@@ -1,6 +1,8 @@
 services:
   postgres:
     image: docker.io/library/postgres:16
+    ports:
+      - "5432:5432"
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
@@ -17,8 +19,13 @@ services:
       context: .
       dockerfile: Dockerfile
       target: production
+    ports:
+      - "3000:3000"
     env_file:
       - .env
+    environment:
+      VLLM_URL: ${VLLM_URL:-https://llm.agentic-ai-gist.org}
+      VLLM_MODEL: ${VLLM_MODEL:-google/gemma-4-26B-A4B-it}
     volumes:
       - ./vault:/app/vault
       - ./wiki-vault:/app/wiki-vault
@@ -33,6 +40,8 @@ services:
 
   openclaw:
     image: ghcr.io/openclaw/openclaw:latest
+    ports:
+      - "3100:3100"
     environment:
       DISCORD_TOKEN: ${OPENCLAW_DISCORD_TOKEN}
       DISCORD_GUILD_ID: ${OPENCLAW_DISCORD_GUILD_ID}
@@ -64,5 +73,3 @@ services:
           echo "[$(date -Iseconds)] Done. Sleeping 6h."
           sleep 21600
         done
-
-

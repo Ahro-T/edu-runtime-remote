@@ -16,18 +16,8 @@ else
   CONTAINER="docker"
 fi
 
-MODE="${1:-all}"
-if [ "$MODE" = "local" ]; then
-  echo "[stop] Stopping local..."
-  $COMPOSE -p edu-runtime -f docker-compose.yml -f docker-compose.local.yml down --remove-orphans 2>/dev/null || true
-elif [ "$MODE" = "remote" ]; then
-  echo "[stop] Stopping remote..."
-  $COMPOSE -p edu-runtime-remote -f docker-compose.yml -f docker-compose.remote.yml down --remove-orphans 2>/dev/null || true
-else
-  echo "[stop] Stopping all..."
-  $COMPOSE -p edu-runtime -f docker-compose.yml -f docker-compose.local.yml down --remove-orphans 2>/dev/null || true
-  $COMPOSE -p edu-runtime-remote -f docker-compose.yml -f docker-compose.remote.yml down --remove-orphans 2>/dev/null || true
-fi
+echo "[stop] Stopping edu-runtime..."
+$COMPOSE -p edu-runtime down --remove-orphans 2>/dev/null || true
 
 echo ""
 echo "========================================="
