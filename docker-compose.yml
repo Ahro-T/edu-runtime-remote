@@ -2,7 +2,7 @@ services:
   postgres:
     image: docker.io/library/postgres:16
     ports:
-      - "5432:5432"
+      - "5433:5432"
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
@@ -20,7 +20,7 @@ services:
       dockerfile: Dockerfile
       target: production
     ports:
-      - "3000:3000"
+      - "3001:3000"
     env_file:
       - .env
     volumes:
@@ -38,16 +38,20 @@ services:
   openclaw:
     image: ghcr.io/openclaw/openclaw:latest
     ports:
-      - "3100:3100"
+      - "3101:3100"
     environment:
       DISCORD_TOKEN: ${OPENCLAW_DISCORD_TOKEN}
       DISCORD_GUILD_ID: ${OPENCLAW_DISCORD_GUILD_ID}
       RUNTIME_API_URL: http://app:3000
       VLLM_URL: ${VLLM_URL:-https://llm.agentic-ai-gist.org}
-      VLLM_MODEL: ${VLLM_MODEL:-google/gemma-4-27b-it}
+      VLLM_MODEL: ${VLLM_MODEL:-google/gemma-4-26B-A4B-it}
+      CF_ACCESS_CLIENT_ID: ${CF_ACCESS_CLIENT_ID:-}
+      CF_ACCESS_CLIENT_SECRET: ${CF_ACCESS_CLIENT_SECRET:-}
     volumes:
       - ./workspaces/teacher:/workspace
       - ./scripts/openclaw-entrypoint.sh:/entrypoint.sh:ro
+      - ./scripts/cf-access-inject.cjs:/entrypoint-scripts/cf-access-inject.cjs:ro
+      - ./scripts/vllm-proxy.mjs:/entrypoint-scripts/vllm-proxy.mjs:ro
     entrypoint: ["/bin/sh", "/entrypoint.sh"]
     command: []
     depends_on:

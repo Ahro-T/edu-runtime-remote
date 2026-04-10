@@ -41,9 +41,17 @@ printf "VLLM_URL [https://llm.agentic-ai-gist.org]: "
 read vllm_url
 vllm_url="${vllm_url:-https://llm.agentic-ai-gist.org}"
 
-printf "VLLM_MODEL [google/gemma-4-27b-it]: "
+printf "VLLM_MODEL [google/gemma-4-26B-A4B-it]: "
 read vllm_model
-vllm_model="${vllm_model:-google/gemma-4-27b-it}"
+vllm_model="${vllm_model:-google/gemma-4-26B-A4B-it}"
+
+printf "CF_ACCESS_CLIENT_ID (Cloudflare Access, skip if not needed): "
+read cf_client_id
+cf_client_id="${cf_client_id:-}"
+
+printf "CF_ACCESS_CLIENT_SECRET (Cloudflare Access, skip if not needed): "
+read cf_client_secret
+cf_client_secret="${cf_client_secret:-}"
 
 printf "Discord bot token (skip if not using Discord): "
 read discord_token
@@ -62,6 +70,8 @@ DATABASE_URL=postgresql://postgres:postgres@postgres:5432/edu_runtime
 VAULT_PATH=/app/wiki-vault
 VLLM_URL=${vllm_url}
 VLLM_MODEL=${vllm_model}
+CF_ACCESS_CLIENT_ID=${cf_client_id}
+CF_ACCESS_CLIENT_SECRET=${cf_client_secret}
 OPENCLAW_DISCORD_TOKEN=${discord_token}
 OPENCLAW_DISCORD_GUILD_ID=${discord_guild}
 LOG_LEVEL=${log_level}
